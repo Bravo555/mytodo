@@ -1,15 +1,15 @@
 use super::schema::task;
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[table_name = "task"]
 pub struct NewTask<'a> {
     pub title: &'a str,
-    pub done: bool
+    pub done: bool,
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Debug)]
 pub struct Task {
     pub id: i32,
     pub title: String,
-    pub done: bool
+    pub done: bool,
 }

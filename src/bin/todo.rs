@@ -1,4 +1,4 @@
-use mytodo::db;
+use mytodo::db::{self, DbError};
 use std::env;
 
 fn main() {
@@ -16,11 +16,19 @@ fn main() {
             new_task(title);
         }
         "show" => {
-            show_tasks();
+            let id = args.next();
+            match id {
+                Some(id) => show_task(id.parse().expect("bad id")),
+                None => show_tasks(),
+            }
         }
         "done" => {
-            let id = args.next().expect("expected id");
-            mark_task_done(id);
+            let id = args.next().expect("expected id").parse().expect("bad id");
+            complete_task(id);
+        }
+        "delete" => {
+            let id = args.next().expect("expected id").parse().expect("bad id");
+            delete_task(id);
         }
         _ => help(),
     }
@@ -34,14 +42,48 @@ fn help() {
 fn new_task(title: &str) {
     let conn = db::establish_connection();
     db::create_task(&conn, &title);
+    show_tasks();
 }
 
 fn show_tasks() {
     let conn = db::establish_connection();
-    println!("TASKS\n-----");
+    println!("TASKS\n-----\nid\ttitle\tdone");
     for task in db::query_task(&conn) {
-        println!("{}: done - {}", task.title, task.done);
+        print_task(&task);
     }
 }
 
-fn mark_task_done(id: i32) {}
+fn show_task(id: i32) {
+    let conn = db::establish_connection();
+    match db::get_task_by_id(&conn, id) {
+        Some(task) => print_task(&task),
+        None => println!("Such task doesn't exist"),
+    }
+}
+
+fn complete_task(id: i32) {
+    let conn = db::establish_connection();
+    match db::complete_task(&conn, id) {
+        Ok(_) => println!("Task with id {} completed!", id),
+        Err(DbError::NoSuchTask) => println!("Task with id {} doesn't exist", id),
+    }
+    show_tasks();
+}
+
+fn delete_task(id: i32) {
+    let conn = db::establish_connection();
+    db::delete_task(&conn, id);
+    show_tasks();
+}
+
+fn print_task(task: &db::models::Task) {
+    println!("{}\t{}\t{}", task.id, task.title, tick_if_done(task.done));
+}
+
+fn tick_if_done(done: bool) -> String {
+    if done {
+        String::from("[X]")
+    } else {
+        String::from("[ ]")
+    }
+}
